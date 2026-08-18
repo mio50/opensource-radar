@@ -1,17 +1,7 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -22,7 +12,38 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const userProfiles = mysqlTable(
+  "user_profiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    skills: text("skills").notNull(),
+    interests: text("interests").notNull(),
+    experience: mysqlEnum("experience", ["مبتدئ", "متوسط", "متقدم"]).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [uniqueIndex("user_profiles_user_id_idx").on(table.userId)],
+);
+
+export const favoriteProjects = mysqlTable(
+  "favorite_projects",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    repoFullName: varchar("repoFullName", { length: 255 }).notNull(),
+    repoName: varchar("repoName", { length: 255 }).notNull(),
+    repoUrl: varchar("repoUrl", { length: 512 }).notNull(),
+    repoDescription: text("repoDescription"),
+    language: varchar("language", { length: 80 }),
+    matchScore: int("matchScore").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [uniqueIndex("favorite_projects_user_repo_idx").on(table.userId, table.repoFullName)],
+);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-
-// TODO: Add your tables here
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = typeof userProfiles.$inferInsert;
+export type FavoriteProject = typeof favoriteProjects.$inferSelect;
+export type InsertFavoriteProject = typeof favoriteProjects.$inferInsert;
